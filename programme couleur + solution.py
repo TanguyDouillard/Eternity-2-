@@ -128,7 +128,7 @@ def afficher_grille_pygame(taille_grille, pieces):
     pygame.quit()
 
 def main():
-    fichier = "Grille16x16.txt"
+    fichier = "Grille4x4.txt"
     taille_grille, nombre_couleurs, grille = lire_fichier(fichier)
 
     print(f"Taille de la grille : {taille_grille}x{taille_grille}")
