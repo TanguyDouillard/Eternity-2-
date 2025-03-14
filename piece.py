@@ -43,3 +43,18 @@ class Piece:
         pygame.draw.polygon(surface, self.couleurs[2], [corners[2], corners[3], (cx, cy)])
         # Triangle gauche
         pygame.draw.polygon(surface, self.couleurs[3], [corners[3], corners[0], (cx, cy)])
+
+         # Dessiner les traits entre les triangles
+        trait_couleur = (128, 128, 128)  # Gris clair
+        trait_epaisseur = 1
+        
+        pygame.draw.line(surface, trait_couleur, corners[0], corners[1], trait_epaisseur)  # Haut
+        pygame.draw.line(surface, trait_couleur, corners[1], corners[2], trait_epaisseur)  # Droite
+        pygame.draw.line(surface, trait_couleur, corners[2], corners[3], trait_epaisseur)  # Bas
+        pygame.draw.line(surface, trait_couleur, corners[3], corners[0], trait_epaisseur)  # Gauche
+        
+         # Dessiner les traits sur les bords
+        pygame.draw.line(surface, trait_couleur, corners[0], (cx, cy), trait_epaisseur)  # Diagonale haut-gauche
+        pygame.draw.line(surface, trait_couleur, corners[1], (cx, cy), trait_epaisseur)  # Diagonale haut-droit
+        pygame.draw.line(surface, trait_couleur, corners[2], (cx, cy), trait_epaisseur)  # Diagonale bas-droit
+        pygame.draw.line(surface, trait_couleur, corners[3], (cx, cy), trait_epaisseur)  # Diagonale bas-gauche
