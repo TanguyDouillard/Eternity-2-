@@ -1,5 +1,6 @@
 import pygame
 
+pygame.mixer.init()
 son_check = pygame.mixer.Sound("Son/Check.MP3")
 son_faux = pygame.mixer.Sound("Son/Faux.MP3")
 son_victoire = pygame.mixer.Sound("Son/Victoire.MP3")
