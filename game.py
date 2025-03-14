@@ -24,6 +24,7 @@ image_son_off = pygame.image.load("Images/son_off.png")
 image_son_off = pygame.transform.scale(image_son_off, (40, 40))
 
 son_jouable = True
+regles = True
 running = True
 scene = 1
 # choix_grille = None
@@ -36,11 +37,6 @@ grille_jeu = {}
 x_debut = 50
 y_debut = 200
 x_debut_regles, y_debut_regles = 1100, 185
-
-bouton_retour = pygame.Rect(x_debut_regles - 15, 15, 200, 60)
-bouton_quitter = pygame.Rect(x_debut_regles + 210 - 15, 15, 200, 60)
-bouton_ia = pygame.Rect(x_debut_regles - 15, 80, 200, 50)
-bouton_son = pygame.Rect(x_debut_regles + 210 - 15 + 100, 80, 100, 50)
 
 font_titre = pygame.font.Font(None, 100)
 font_bouton = pygame.font.Font(None, 35)
@@ -219,7 +215,7 @@ def play_game():
     handle_events()
 
 def draw_ecran():
-    global choix_grille, taille_piece, couleur_fond_ecran ,couleur_fond_grille, couleur_grille, couleur_grille_lignes, couleur_titre, couleur_titre_regles, couleur_texte_regles, couleur_fond_regles, couleur_contour_regles, bouton_retour, bouton_quitter, bouton_ia, bouton_son, couleur_bouton_2, couleur_hover_bouton_2, couleur_texte_bouton_2, pieces
+    global choix_grille, taille_piece, couleur_fond_ecran ,couleur_fond_grille, couleur_grille, couleur_grille_lignes, couleur_titre, couleur_titre_regles, couleur_texte_regles, couleur_fond_regles, couleur_contour_regles, bouton_retour, bouton_quitter, bouton_ia, bouton_son, bouton_regles, couleur_bouton_2, couleur_hover_bouton_2, couleur_texte_bouton_2, pieces, rect_zone
 
 
     x_debut, y_debut = 50, 200
@@ -283,7 +279,7 @@ def draw_ecran():
 
     ##TEST POUR IA
     #Bouton ia
-    bouton_ia = pygame.Rect(x_debut_regles - 15 , 80, 200, 50)
+    bouton_ia = pygame.Rect(x_debut_regles + 210 - 15, 80, 95, 50)
 
     # Détection du survol et sélection
     if bouton_ia.collidepoint(pygame.mouse.get_pos()):
@@ -311,70 +307,27 @@ def draw_ecran():
         screen.blit( image_son_on, ( x_debut_regles + (210 - 15)  + 100 + 30, 85) )
     else:
         screen.blit( image_son_off, ( (x_debut_regles + (210 - 15)  + 100) + 30 , 85) )
+        
+        
+    #Bouton Règles    
+    bouton_regles = pygame.Rect(x_debut_regles - 15, 80, 200, 50)
+    
+    # Détection du survol et sélection
+    if bouton_regles.collidepoint(pygame.mouse.get_pos()):
+        couleur_regles = couleur_hover_bouton_2
+    else:
+        couleur_regles = couleur_bouton_2
+        
+    pygame.draw.rect(screen, couleur_regles, bouton_regles, border_radius=10)
+    texte_regles = font_bouton.render("regles", True, couleur_texte_bouton_2)
+    screen.blit(texte_regles, (bouton_regles.x + (bouton_regles.width - texte_regles.get_width()) // 2, bouton_regles.y + (bouton_regles.height - texte_regles.get_height()) // 2))
+    
+    
+    affichage_regles(regles,couleur_titre_regles,x_debut_regles,y_debut_regles, screen, couleur_fond_regles, couleur_contour_regles, couleur_texte_regles, couleur_fond_ecran)
 
-
-
-    # TITRE "RÈGLES"
-    try:
-        font_titre_regles = pygame.font.Font("Orbitron/Orbitron-Regular.ttf", 30)
-    except:
-        font_titre_regles = pygame.font.Font(None, 35)
-
-    titre_regles = font_titre_regles.render("RÈGLES", True, couleur_titre_regles)  # Noir
-    screen.blit(titre_regles, (x_debut_regles + 120, y_debut_regles - 50))  # Centré au-dessus du texte
-
-    # TEXTE DES RÈGLES (bien structuré)
-    texte_regles = """Bienvenue dans Eternity II !
-
-Le but du jeu est d'assembler
-toutes les pièces dans la grille
-de manière à ce que les couleurs
-des côtés adjacents
-correspondent.
-
-Attention !
-Tu ne peux pas poser deux
-pièces l'une à coté de l'autre
-si elle n'ont pas les bords de
-même couleur.
-Les pièces en bordure doivent
-coincider avec la couleur du bord.
-
-Commandes :
-- Clic gauche : déplacer une pièce
-- Clic droit : faire pivoter une pièce
-
-Bonne chance !"""
-
-    # Définition de la zone d'affichage
-    rect_zone = pygame.Rect(x_debut_regles, y_debut_regles, 375, 520)  # Hauteur ajustée
-
-    # Police et taille du texte
-    try:
-        font_regles = pygame.font.Font("Orbitron/Orbitron-Regular.ttf", 20)
-    except:
-        font_regles = pygame.font.Font(None, 25)
-
-    # Affichage du fond de la zone
-    pygame.draw.rect(screen, couleur_fond_regles, rect_zone, border_radius=10)  # Bord arrondi
-
-    # Découper et afficher le texte proprement
-    lignes = texte_regles.split("\n")  # Séparer les lignes avec "\n"
-    y = rect_zone.top + 10  # Décalage du haut
-
-    for ligne in lignes:
-        if ligne.strip() == "":  # Vérifier si la ligne est vide pour ajouter un espace vertical
-            y += font_regles.get_height() // 2
-        else:
-            texte_render = font_regles.render(ligne, True, couleur_texte_regles)  # Noir
-            screen.blit(texte_render, (rect_zone.left + 5, y))
-            y += font_regles.get_height()
-
-    # Afficher le contour du rectangle
-    pygame.draw.rect(screen, couleur_contour_regles, rect_zone, width=2, border_radius=10)
 
 def handle_events():
-    global running, scene, selected_tile, grille_jeu, son_jouable
+    global running, scene, selected_tile, grille_jeu, son_jouable, regles, screen
 
     # Gestion des événements
     for event in pygame.event.get():
@@ -402,6 +355,13 @@ def handle_events():
                     son_jouable = False
                 else:
                     son_jouable = True
+                    
+            if bouton_regles.collidepoint(event.pos):
+                if regles == True :
+                    regles = False 
+                else:
+                    regles = True
+                    
 
             if event.button == 1:  # Clic gauche pour déplacer
                 for piece in pieces:
