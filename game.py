@@ -1,11 +1,15 @@
 import pygame
 import random
 import time
+import threading
 from piece import *
 from grid import *
 from styles import *
 from utils import *
 from ia import *
+from noeud import *
+from listeNoeud import *
+from methArbo import *
 
 # Initialisation de Pygame
 pygame.init()
@@ -24,7 +28,8 @@ image_son_off = pygame.image.load("Images/son_off.png")
 image_son_off = pygame.transform.scale(image_son_off, (40, 40))
 
 son_jouable = True
-regles = True
+regles = False
+ia_running = False
 running = True
 scene = 1
 # choix_grille = None
@@ -327,7 +332,7 @@ def draw_ecran():
 
 
 def handle_events():
-    global running, scene, selected_tile, grille_jeu, son_jouable, regles, screen
+    global running, scene, selected_tile, grille_jeu, son_jouable, regles, screen, ia_running
 
     # Gestion des événements
     for event in pygame.event.get():
@@ -348,7 +353,12 @@ def handle_events():
                 scene = 1
 
             if bouton_ia.collidepoint(event.pos):
-                afficher_arbre()
+                if not ia_running:
+                    ia_running = True
+                    # Lancer l'IA ici
+                    threading.Thread(target=run_ia).start()
+                else:
+                    ia_running = False
 
             if bouton_son.collidepoint(event.pos):
                 if son_jouable == True:
@@ -554,6 +564,26 @@ Nathan Deltour et Tanguy Douillard"""
 
 
         pygame.display.flip()
+        
+def run_ia():
+    global grille_jeu, pieces, ia_running
+
+    # Logique de l'IA ici
+    while ia_running:
+        # Exemple de logique d'IA
+        # Vous pouvez utiliser votre méthode d'exploration en profondeur ici
+        print("IA is running...")
+        time.sleep(1)  # Simuler le travail de l'IA
+
+        # Mettre à jour l'affichage ou les pièces selon les actions de l'IA
+        draw_ecran()
+        for piece in pieces:
+            piece.draw(screen)
+        pygame.display.flip()
+
+        # Condition d'arrêt de l'IA
+        if len(grille_jeu) == choix_grille**2:
+            ia_running = False
 
 
 if __name__ == "__main__":

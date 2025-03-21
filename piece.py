@@ -16,13 +16,15 @@ class Piece:
 
         self.colonne = round((self.rect.x - x_debut) / taille_piece)
         self.ligne   = round((self.rect.y - y_debut) / taille_piece)    # Position ligne sur la grille (0 à choix_grille - 1)
+        self.rotation_index = 0  # Index de la rotation actuelle
 
 
-    # Rotation de 90 degrés (changer l'ordre des bords)
     def rotate(self):
+        # Rotation de 90 degrés (changer l'ordre des bords)
         self.couleurs = self.couleurs[-1:] + self.couleurs[:-1]
         self.cotes = self.cotes[-1:] + self.cotes[:-1]
         self.rotation = (self.rotation + 90) % 360
+        self.rotation_index = (self.rotation_index + 1) % 4
 
 
     # Dessiner la pièce avec ses triangles colorés
@@ -43,8 +45,8 @@ class Piece:
         pygame.draw.polygon(surface, self.couleurs[2], [corners[2], corners[3], (cx, cy)])
         # Triangle gauche
         pygame.draw.polygon(surface, self.couleurs[3], [corners[3], corners[0], (cx, cy)])
-
-         # Dessiner les traits entre les triangles
+        
+        # Dessiner les traits entre les triangles
         trait_couleur = (128, 128, 128)  # Gris clair
         trait_epaisseur = 1
         

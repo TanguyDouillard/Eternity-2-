@@ -1,5 +1,6 @@
 import pygame
 
+
 pygame.mixer.init()
 son_check = pygame.mixer.Sound("Son/Check.MP3")
 son_faux = pygame.mixer.Sound("Son/Faux.MP3")
@@ -32,6 +33,7 @@ def sons(son,son_jouable):
         elif son == "son_victoire":
             pygame.mixer.Sound.play(son_victoire)
             pygame.mixer.music.stop()
+            
 def affichage_regles(regles,couleur_titre_regles,x_debut_regles,y_debut_regles, screen, couleur_fond_regles, couleur_contour_regles, couleur_texte_regles, couleur_fond_ecran):
     
     if regles == True : 
