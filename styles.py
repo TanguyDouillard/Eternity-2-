@@ -1,20 +1,5 @@
 import pygame
-
-# Variables globales
-couleur_fond_ecran = None
-couleur_fond_grille = None
-couleur_grille = None
-couleur_grille_lignes = None
-couleur_titre = None
-couleur_titre_regles = None
-couleur_texte_regles = None
-couleur_fond_regles = None
-couleur_contour_regles = None
-couleur_fond_fin = None
-couleur_texte_fin = None
-couleur_bouton_2 = None
-couleur_hover_bouton_2 = None
-couleur_texte_bouton_2 = None
+from variables import *
 
 def generer_couleurs(nombre_couleurs, palette):
     if palette == "Pastel":

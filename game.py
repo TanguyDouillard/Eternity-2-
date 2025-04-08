@@ -1,6 +1,5 @@
 import pygame
 import random
-import time
 import threading
 from piece import *
 from grid import *
@@ -10,43 +9,15 @@ from ia import *
 from noeud import *
 from listeNoeud import *
 from methArbo import *
+# from ecran import *
+from variables import *
+# Ajoutez en haut du fichier
+import sys
+from threading import Event
 
 # Initialisation de Pygame
 pygame.init()
 
-# Configuration de l'écran
-largeur_screen,longueur_screen = 1500 , 750
-screen = pygame.display.set_mode((largeur_screen, longueur_screen))
-pygame.display.set_caption("Eternity II")
-
-# Variables globales
-logo = pygame.image.load("Images/Polytech_logo.png")
-logo = pygame.transform.scale(logo, (373, 125))
-image_son_on = pygame.image.load("Images/son_on.png")
-image_son_on = pygame.transform.scale(image_son_on, (40, 40))
-image_son_off = pygame.image.load("Images/son_off.png")
-image_son_off = pygame.transform.scale(image_son_off, (40, 40))
-
-son_jouable = True
-regles = False
-ia_running = False
-running = True
-scene = 1
-# choix_grille = None
-# palette_couleur = None
-selected_tile = None
-grille_jeu = {}
-# taille_piece = 0
-# pieces = []
-
-x_debut = 50
-y_debut = 200
-x_debut_regles, y_debut_regles = 1100, 185
-
-font_titre = pygame.font.Font(None, 100)
-font_bouton = pygame.font.Font(None, 35)
-font_regles = pygame.font.Font(None, 25)
-font_texte_fin = pygame.font.Font(None, 74)
 
 def modification_style(palette_couleur):
     global couleur_fond_ecran, couleur_fond_grille, couleur_grille, couleur_grille_lignes, couleur_titre, couleur_titre_regles, couleur_texte_regles, couleur_fond_regles, couleur_contour_regles, couleur_fond_fin, couleur_texte_fin, couleur_bouton_2, couleur_hover_bouton_2, couleur_texte_bouton_2
@@ -101,16 +72,21 @@ def modification_style(palette_couleur):
     
 
 def run_game():
-    global running, scene, choix_grille, palette_couleur, selected_tile, grille_jeu, taille_piece, pieces, largeur_screen
-
-    while running:
-        if scene == 1:
-            show_menu()
-        elif scene == 2:
-            play_game()
+    global running, scene, choix_grille, palette_couleur, selected_tile, grille_jeu, taille_piece, pieces, largeur_screen, ia_thread, ia_stop_requested
+    try :
+        while running:
+            if scene == 1:
+                show_menu()
+            elif scene == 2:
+                play_game()
+        
+    finally:
+        ia_stop_event.set()
+        pygame.quit()
+        sys.exit()
 
 def show_menu():
-    global running, scene, choix_grille, palette_couleur, logo, taille_piece, pieces
+    global running, scene, choix_grille, palette_couleur, logo, taille_piece, pieces, font_titre, font_bouton
     
     try:
         font_titre = pygame.font.Font("Orbitron/Orbitron-Regular.ttf", 25)
@@ -217,7 +193,7 @@ Appuie ici : """
                     run = False
 
 def play_game(): 
-    handle_events()
+        handle_events()
 
 def draw_ecran():
     global choix_grille, taille_piece, couleur_fond_ecran ,couleur_fond_grille, couleur_grille, couleur_grille_lignes, couleur_titre, couleur_titre_regles, couleur_texte_regles, couleur_fond_regles, couleur_contour_regles, bouton_retour, bouton_quitter, bouton_ia, bouton_son, bouton_regles, couleur_bouton_2, couleur_hover_bouton_2, couleur_texte_bouton_2, pieces, rect_zone
@@ -239,7 +215,6 @@ def draw_ecran():
         pygame.draw.rect(screen, couleur_grille, ((x_debut + (i * taille_piece)), y_debut, taille_piece, taille_piece))
         pygame.draw.rect(screen, couleur_grille_lignes, ((x_debut + (i * taille_piece)), y_debut, taille_piece, taille_piece), width=1)
 
-    # Titre "Eternity II"
     try:
         font_titre = pygame.font.Font("Orbitron/Orbitron-Regular.ttf", 100)
     except:
@@ -330,35 +305,55 @@ def draw_ecran():
     
     affichage_regles(regles,couleur_titre_regles,x_debut_regles,y_debut_regles, screen, couleur_fond_regles, couleur_contour_regles, couleur_texte_regles, couleur_fond_ecran)
 
-
+def run_ia():
+    global grille_jeu, ia_running
+    
+    ia_running = True
+    noeud_initial = Noeud(grille_jeu.copy(), pieces.copy())
+    
+    # Passage des paramètres essentiels
+    solution = explorer_profondeur(noeud_initial, grille_jeu, pieces, screen)
+    
+    if solution:
+        grille_jeu.clear()
+        grille_jeu.update(solution.grille)
+    
+    ia_running = False
+        
 def handle_events():
-    global running, scene, selected_tile, grille_jeu, son_jouable, regles, screen, ia_running
+    global running, scene, selected_tile, grille_jeu, son_jouable, regles, screen, ia_running, couleur_fond_ecran
 
     # Gestion des événements
     for event in pygame.event.get():
 
         if event.type == pygame.QUIT:  # Quitter
+            ia_stop_event.set()
             running = False
-
+                      
 
         # Sélectionner une pièce avec la souris
         if event.type == pygame.MOUSEBUTTONDOWN:
 
-            if bouton_quitter.collidepoint(event.pos): #bouton quitter le jeu
-                running = False
+            if bouton_quitter.collidepoint(event.pos) or bouton_retour.collidepoint(event.pos):
+                ia_stop_event.set()
+                running = False  # Ou redirigez vers le menu
 
             if bouton_retour.collidepoint(event.pos): #bouton retour au menu
+                ia_stop_event.set()
                 grille_jeu = {}
                 selected_tile = None
                 scene = 1
 
             if bouton_ia.collidepoint(event.pos):
                 if not ia_running:
+                    print("début ia")
                     ia_running = True
-                    # Lancer l'IA ici
-                    threading.Thread(target=run_ia).start()
+                    threading.Thread(target=run_ia, daemon=True).start()
                 else:
+                    ia_stop_event.set()
+                    print("fin ia")                  
                     ia_running = False
+
 
             if bouton_son.collidepoint(event.pos):
                 if son_jouable == True:
@@ -373,7 +368,7 @@ def handle_events():
                     regles = True
                     
 
-            if event.button == 1:  # Clic gauche pour déplacer
+            if event.button == 1 and not ia_running :  # Clic gauche pour déplacer
                 for piece in pieces:
                     if piece.rect.collidepoint(event.pos):
                         selected_tile = piece
@@ -384,7 +379,7 @@ def handle_events():
 
 
 
-            elif event.button == 3:  # Clic droit pour pivoter
+            elif event.button == 3 and not ia_running :  # Clic droit pour pivoter
                 for piece in pieces:
                     if piece.rect.collidepoint(event.pos):
                         if (piece.colonne, piece.ligne) in grille_jeu: #vérifie si la pièce est déja dans la grille
@@ -393,7 +388,7 @@ def handle_events():
 
 
         # Relâcher la pièce et la fixer sur la grille
-        if event.type == pygame.MOUSEBUTTONUP and selected_tile:
+        if event.type == pygame.MOUSEBUTTONUP and selected_tile and not ia_running :
 
             # Trouver la case la plus proche
             selected_tile.colonne = round((selected_tile.rect.x - x_debut) / taille_piece)
@@ -504,7 +499,8 @@ def handle_events():
 
 
             # Déplacer une pièce sélectionnée
-        if event.type == pygame.MOUSEMOTION and selected_tile:
+        if event.type == pygame.MOUSEMOTION and selected_tile and not ia_running :
+            
             selected_tile.rect.x, selected_tile.rect.y = event.pos
 
                 # Empêcher de dépasser à gauche et à droite de la fenêtre
@@ -512,79 +508,62 @@ def handle_events():
 
                 # Empêcher de dépasser en haut et en bas de la fenêtre
             selected_tile.rect.y = max(0, min(selected_tile.rect.y, longueur_screen - taille_piece))
-
+            
         draw_ecran()
-
-        # Dessiner les pièces
-        for piece in pieces:
-            piece.draw(screen)
-
-        if len(grille_jeu) == choix_grille**2: #Vérifie si toutes les pièces sont dans la grille
-            try:
-                font_texte_fin = pygame.font.Font("Orbitron/Orbitron-Regular.ttf", 60)
-            except:
-                font_texte_fin = pygame.font.Font(None, 74)
-
-            texte_fin_simple = """Félicitations !
-Bien joué ! Merci d'avoir joué !
-Maintenant tu peux essayer une
-grille plus compliquée !
-Nathan Deltour et Tanguy Douillard"""
-
-            texte_fin_compliqué = """Félicitations !
-On ne peut faire plus compliqué !
-Merci d'avoir joué !
-Nathan Deltour et Tanguy Douillard"""
-
-            if choix_grille != 16:
-                texte_fin = texte_fin_simple
-            else:
-                texte_fin = texte_fin_compliqué
-
-            #fond pour mieux pouvoir lire
-            rect_fin = pygame.Rect(180, 180, 1200, 400)
-            pygame.draw.rect(screen, couleur_fond_fin, rect_fin, border_radius=10)
-
-            # Découper et afficher le texte proprement
-            lignes = texte_fin.split("\n")  # Séparer les lignes avec "\n"
-            y = 200 #longueur_screen // 2 - texte.get_height() // 2  # Décalage du haut
-
-            for ligne in lignes:
-                if ligne.strip() == "":  # Vérifier si la ligne est vide pour ajouter un espace vertical
-                    y += font_texte_fin.get_height() // 2
-                else:
-                    texte_render = font_texte_fin.render(ligne, True, couleur_texte_fin)  # Noir
-                    screen.blit(texte_render, (200, y))
-                    y += font_texte_fin.get_height()
-
-            pygame.display.flip()
-            sons("son_victoire",son_jouable)
-            time.sleep(10)  # Pause pour que le joueur voie le message
-            running = False  # Terminer le jeu
-
-
-        pygame.display.flip()
         
-def run_ia():
-    global grille_jeu, pieces, ia_running
-
-    # Logique de l'IA ici
-    while ia_running:
-        # Exemple de logique d'IA
-        # Vous pouvez utiliser votre méthode d'exploration en profondeur ici
-        print("IA is running...")
-        time.sleep(1)  # Simuler le travail de l'IA
-
-        # Mettre à jour l'affichage ou les pièces selon les actions de l'IA
-        draw_ecran()
-        for piece in pieces:
-            piece.draw(screen)
-        pygame.display.flip()
-
-        # Condition d'arrêt de l'IA
-        if len(grille_jeu) == choix_grille**2:
-            ia_running = False
-
+        if not ia_running :
+        
+    
+            # Dessiner les pièces
+            for piece in pieces:
+                piece.draw(screen)
+    
+            if len(grille_jeu) == choix_grille**2: #Vérifie si toutes les pièces sont dans la grille
+                try:
+                    font_texte_fin = pygame.font.Font("Orbitron/Orbitron-Regular.ttf", 60)
+                except:
+                    font_texte_fin = pygame.font.Font(None, 74)
+    
+                texte_fin_simple = """Félicitations !
+    Bien joué ! Merci d'avoir joué !
+    Maintenant tu peux essayer une
+    grille plus compliquée !
+    Nathan Deltour et Tanguy Douillard"""
+    
+                texte_fin_compliqué = """Félicitations !
+    On ne peut faire plus compliqué !
+    Merci d'avoir joué !
+    Nathan Deltour et Tanguy Douillard"""
+    
+                if choix_grille != 16:
+                    texte_fin = texte_fin_simple
+                else:
+                    texte_fin = texte_fin_compliqué
+    
+                #fond pour mieux pouvoir lire
+                rect_fin = pygame.Rect(180, 180, 1200, 400)
+                pygame.draw.rect(screen, couleur_fond_fin, rect_fin, border_radius=10)
+    
+                # Découper et afficher le texte proprement
+                lignes = texte_fin.split("\n")  # Séparer les lignes avec "\n"
+                y = 200 #longueur_screen // 2 - texte.get_height() // 2  # Décalage du haut
+    
+                for ligne in lignes:
+                    if ligne.strip() == "":  # Vérifier si la ligne est vide pour ajouter un espace vertical
+                        y += font_texte_fin.get_height() // 2
+                    else:
+                        texte_render = font_texte_fin.render(ligne, True, couleur_texte_fin)  # Noir
+                        screen.blit(texte_render, (200, y))
+                        y += font_texte_fin.get_height()
+    
+                pygame.display.flip()
+                sons("son_victoire",son_jouable)
+                pygame.time.delay(100)  # Pause pour que le joueur voie le message
+                running = False  # Terminer le jeu
+    
+    
+            pygame.display.flip()
+        
 
 if __name__ == "__main__":
     run_game()

@@ -1,119 +1,133 @@
+import pygame
 from piece import Piece
+import random
 
 class Noeud:
-    def __init__(self, grille, pieces_a_placer, parent=None):
-        self.grille = grille  # État actuel de la grille, un dictionnaire avec des tuples (ligne, colonne) comme clés
-        self.pieces_a_placer = pieces_a_placer  # Liste des pièces à placer
-        self.parent = parent  # Référence au noeud parent
-
+    def __init__(self, grille, pieces_a_placer):
+        self.grille = {}
+        for (ligne, colonne), piece in grille.items():
+            # Conversion explicite des cotes en liste si nécessaire
+            cotes = list(piece.cotes) if isinstance(piece.cotes, tuple) else piece.cotes.copy()
+            
+            new_piece = Piece(
+                id_piece=piece.id_piece,
+                x=piece.rect.x,
+                y=piece.rect.y,
+                cotes=cotes,  # Utilise la version liste
+                couleurs=piece.couleurs.copy(),  # Supposé être une liste
+                taille_piece=piece.taille_piece,
+                x_debut=piece.x_debut,
+                y_debut=piece.y_debut
+            )
+            new_piece.rotation_index = piece.rotation_index
+            self.grille[(ligne, colonne)] = new_piece
+        
+        self.pieces_a_placer = [p for p in pieces_a_placer]  # Copie superficielle
+        
+    def _copier_piece(self, piece):
+        """Crée une copie indépendante d'une pièce"""
+        return Piece(
+            id_piece=piece.id_piece,
+            x=piece.rect.x,
+            y=piece.rect.y,
+            cotes=list(piece.cotes),
+            couleurs=piece.couleurs.copy(),
+            taille_piece=piece.taille_piece,
+            x_debut=piece.x_debut,
+            y_debut=piece.y_debut
+        )
+        
     def est_solution(self):
         # Vérifie si ce noeud représente une solution complète
-        return len(self.pieces_a_placer) == 0
-
+        return not self.pieces_a_placer
+    
     def generer_enfants(self):
+        from game import ia_stop_event
+        
         enfants = []
-        # Trouver la case libre de plus petit index
         position_libre = self.trouver_case_libre()
-
-        if position_libre is None:
-            print("Aucune case libre trouvée.")
+        if not position_libre:
             return enfants
-
-        print(f"Case libre trouvée à la position {position_libre}.")
-
-        # Pour chaque pièce possible
-        for piece in self.pieces_a_placer:
-            # Réinitialiser la rotation de la pièce
-            piece.rotation_index = 0
-            # Pour chaque rotation possible de la pièce
-            for rotation in range(4):  # Supposons 4 rotations possibles
-                nouvelle_grille = self.placer_piece(piece, position_libre)
-                if nouvelle_grille:
-                    nouvelles_pieces = self.pieces_a_placer[:]
-                    nouvelles_pieces.remove(piece)
-                    enfant = Noeud(nouvelle_grille, nouvelles_pieces, self)
-                    enfants.append(enfant)
-
+    
+        # Mélange aléatoire des pièces à tester
+        pieces_melangees = self.pieces_a_placer
+        
+        for piece in pieces_melangees:
+            if ia_stop_event.is_set():
+                return enfants
+                
+            rotations = (0, 1, 2, 3)
+            
+            for rotation in rotations:
+                piece_tmp = self._copier_piece(piece)
+                for _ in range(rotation):
+                    piece_tmp.rotate()
+                    
+                if self._essayer_placer_piece(piece_tmp, position_libre):
+                    nouvelles_pieces = [p for p in self.pieces_a_placer if p.id_piece != piece.id_piece]
+                    enfants.append(Noeud(self._essayer_placer_piece(piece_tmp, position_libre), nouvelles_pieces))
+        
         return enfants
 
+
     def trouver_case_libre(self):
-        # Trouver la case libre de plus petit index
-        for ligne in range(int(len(self.grille) ** 0.5)):
-            for colonne in range(int(len(self.grille) ** 0.5)):
-                if (ligne, colonne) not in self.grille or self.grille[(ligne, colonne)] is None:
+        from game import choix_grille
+        print(f"Grille actuelle : {self.grille}")  # Ajoutez ceci en début de fonction
+    # Supposons que la grille est de taille choix_grille x choix_grille
+        for ligne in range(choix_grille):  # Utilisez la taille globale de la grille
+            for colonne in range(choix_grille):
+                if (ligne, colonne) not in self.grille:
+                    print(f"Case libre trouvée: {(ligne, colonne)}")
                     return (ligne, colonne)
-        return None
+        print("Aucune case libre trouvée!")
+        return None  # Aucune case libre trouvée
 
     def placer_piece(self, piece, position):
-        # Logique pour placer la pièce dans la grille avec la rotation donnée
+        ligne, colonne = position
         nouvelle_grille = self.grille.copy()
-        # Appliquer la rotation à la pièce
-        piece.rotate()
-        # Placer la pièce dans la grille
+    
         if self.respecte_regle(piece, position, nouvelle_grille):
             nouvelle_grille[position] = piece
-            print(f"Pièce placée à la position {position}.")
             return nouvelle_grille
-        print(f"Impossible de placer la pièce à la position {position}.")
         return None
 
-    def respecte_regle(self, piece, position, nouvelle_grille):
-        # Vérifie si la pièce respecte les règles du jeu à la position donnée
+    def _essayer_placer_piece(self, piece, position):
+        from game import choix_grille, x_debut, y_debut, taille_piece
         ligne, colonne = position
-
-        print(f"Vérification des règles pour la pièce à la position {position} (ligne {ligne}, colonne {colonne}).")
-
-        # Vérifie si la pièce au-dessus a la même couleur
-        if ligne != 0:
-            if (ligne - 1, colonne) in nouvelle_grille and nouvelle_grille[(ligne - 1, colonne)] is not None:
-                if nouvelle_grille[(ligne - 1, colonne)].cotes[2] != piece.cotes[0]:
-                    print("Règle violée : pièce au-dessus.")
-                    return False
-
-        # Vérifie si le bord est gris (haut)
-        if ligne == 0:
-            if piece.cotes[0] != 0:
-                print("Règle violée : bord gris (haut).")
-                return False
-
-        # Vérifie si la pièce à gauche a la même couleur
-        if colonne != 0:
-            if (ligne, colonne - 1) in nouvelle_grille and nouvelle_grille[(ligne, colonne - 1)] is not None:
-                if nouvelle_grille[(ligne, colonne - 1)].cotes[1] != piece.cotes[3]:
-                    print("Règle violée : pièce à gauche.")
-                    return False
-
-        # Vérifie si le bord est gris (gauche)
-        if colonne == 0:
-            if piece.cotes[3] != 0:
-                print("Règle violée : bord gris (gauche).")
-                return False
-
-        # Vérifie si la pièce en dessous a la même couleur
-        if ligne != int(len(nouvelle_grille) ** 0.5) - 1:
-            if (ligne + 1, colonne) in nouvelle_grille and nouvelle_grille[(ligne + 1, colonne)] is not None:
-                if nouvelle_grille[(ligne + 1, colonne)].cotes[0] != piece.cotes[2]:
-                    print("Règle violée : pièce en dessous.")
-                    return False
-
-        # Vérifie si le bord est gris (bas)
-        if ligne == int(len(nouvelle_grille) ** 0.5) - 1:
-            if piece.cotes[2] != 0:
-                print("Règle violée : bord gris (bas).")
-                return False
-
-        # Vérifie si la pièce à droite a la même couleur
-        if colonne != int(len(nouvelle_grille) ** 0.5) - 1:
-            if (ligne, colonne + 1) in nouvelle_grille and nouvelle_grille[(ligne, colonne + 1)] is not None:
-                if nouvelle_grille[(ligne, colonne + 1)].cotes[3] != piece.cotes[1]:
-                    print("Règle violée : pièce à droite.")
-                    return False
-
-        # Vérifie si le bord est gris (droite)
-        if colonne == int(len(nouvelle_grille) ** 0.5) - 1:
-            if piece.cotes[1] != 0:
-                print("Règle violée : bord gris (droite).")
-                return False
-
-        print("Toutes les règles respectées.")
-        return True
+        nouvelle_grille = self.grille.copy()
+        
+        # Vérifier les bords de la grille
+        if ligne == 0 and piece.cotes[0] != 0:  # Bord haut
+            return None
+        if colonne == 0 and piece.cotes[3] != 0:  # Bord gauche
+            return None
+        if ligne == choix_grille-1 and piece.cotes[2] != 0:  # Bord bas
+            return None
+        if colonne == choix_grille-1 and piece.cotes[1] != 0:  # Bord droit
+            return None
+        
+        # Vérifier les voisins
+        if ligne > 0:  # Voisin du haut
+            voisin = self.grille.get((ligne-1, colonne))
+            if voisin and voisin.cotes[2] != piece.cotes[0] or piece.cotes[0] == 0:
+                return None
+        if colonne > 0:  # Voisin de gauche
+            voisin = self.grille.get((ligne, colonne-1))
+            if voisin and voisin.cotes[1] != piece.cotes[3] or piece.cotes[3] == 0:
+                return None
+        if ligne < choix_grille-1:  # Voisin du bas
+            voisin = self.grille.get((ligne+1, colonne))
+            if voisin and voisin.cotes[0] != piece.cotes[2] or piece.cotes[2] == 0:
+                return None
+        if colonne < choix_grille-1:  # Voisin de droite
+            voisin = self.grille.get((ligne, colonne+1))
+            if voisin and voisin.cotes[3] != piece.cotes[1] or piece.cotes[1] == 0:
+                return None
+        
+        # Si toutes les vérifications sont passées
+        nouvelle_grille[(ligne,colonne)] = piece
+        piece.rect.x = x_debut + colonne * taille_piece
+        piece.rect.y = y_debut + ligne * taille_piece
+        piece.colonne = colonne
+        piece.ligne = ligne
+        return nouvelle_grille
