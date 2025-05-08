@@ -35,15 +35,27 @@ regles = False
 ia_running = False
 running = True
 scene = 1
+choix_grille = None
+grille_en_cours = None
+pieces_restantes = None
+
 selected_tile = None
 grille_jeu = {}
 pieces = []
 # Remplacez ia_stop_requested par un Event
 ia_stop_event = threading.Event()
 
+ia_state = {
+    "running": False,
+    "thread": None,
+    "stop_requested": False,
+    "saved_grid": None
+}
+
 x_debut = 50
 y_debut = 200
 x_debut_regles, y_debut_regles = 1100, 185
+
 
 bouton_retour = pygame.Rect(x_debut_regles - 15, 15, 200, 60)
 bouton_quitter = pygame.Rect(x_debut_regles + (210 - 15) , 15, 200, 60)

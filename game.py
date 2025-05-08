@@ -73,17 +73,21 @@ def modification_style(palette_couleur):
 
 def run_game():
     global running, scene, choix_grille, palette_couleur, selected_tile, grille_jeu, taille_piece, pieces, largeur_screen, ia_thread, ia_stop_requested
+    clock = pygame.time.Clock()
     try :
         while running:
+            clock.tick(60)
             if scene == 1:
                 show_menu()
             elif scene == 2:
                 play_game()
         
     finally:
-        ia_stop_event.set()
+        # ia_stop_event.set()
+        # if ia_thread is not None :            
+        #     if 'ia_thread' in globals() and ia_thread.is_alive():
+        #         ia_thread.join() 
         pygame.quit()
-        sys.exit()
 
 def show_menu():
     global running, scene, choix_grille, palette_couleur, logo, taille_piece, pieces, font_titre, font_bouton
@@ -104,7 +108,7 @@ def show_menu():
     tailles_possibles = [4, 6, 8, 12, 16]
     boutons = []
     boutons2 = []
-    choix_grille = None  # Aucune sélection au départ
+    # choix_grille = None  # Aucune sélection au départ
     palette_couleur = None # Aucune sélection au départ
     run = True
 
@@ -198,8 +202,20 @@ def play_game():
 def draw_ecran():
     global choix_grille, taille_piece, couleur_fond_ecran ,couleur_fond_grille, couleur_grille, couleur_grille_lignes, couleur_titre, couleur_titre_regles, couleur_texte_regles, couleur_fond_regles, couleur_contour_regles, bouton_retour, bouton_quitter, bouton_ia, bouton_son, bouton_regles, couleur_bouton_2, couleur_hover_bouton_2, couleur_texte_bouton_2, pieces, rect_zone
 
+    # if not pygame.get_init() or pygame.display.get_init() is False:
+    #     return
+    
+    # if not pygame.display.get_init():
+    #     return
 
     x_debut, y_debut = 50, 200
+    
+    # try:
+    #     screen.fill(couleur_fond_ecran)
+    #     # ... reste du code de dessin ...
+    # except pygame.error as e:
+    #     if "display Surface quit" in str(e):
+    #         return
     screen.fill(couleur_fond_ecran)  # Effacer l'écran
 
     # Dessiner la grille
@@ -305,55 +321,152 @@ def draw_ecran():
     
     affichage_regles(regles,couleur_titre_regles,x_debut_regles,y_debut_regles, screen, couleur_fond_regles, couleur_contour_regles, couleur_texte_regles, couleur_fond_ecran)
 
-def run_ia():
-    global grille_jeu, ia_running
+# def run_ia():
+#     global grille_jeu, ia_running
     
-    ia_running = True
-    noeud_initial = Noeud(grille_jeu.copy(), pieces.copy())
-    
-    # Passage des paramètres essentiels
-    solution = explorer_profondeur(noeud_initial, grille_jeu, pieces, screen)
-    
-    if solution:
-        grille_jeu.clear()
-        grille_jeu.update(solution.grille)
-    
-    ia_running = False
+#     ia_running = True
+#     try :
+#         noeud_initial = Noeud(grille_jeu, pieces)
         
-def handle_events():
-    global running, scene, selected_tile, grille_jeu, son_jouable, regles, screen, ia_running, couleur_fond_ecran
+#         # Passage des paramètres essentiels
+#         solution = explorer_profondeur(noeud_initial, grille_jeu, pieces, screen)
+        
+#         if solution:
+#             grille_jeu.clear()
+#             grille_jeu.update(solution.grille)
+#     except pygame.error as e:
+#             if "display Surface quit" not in str(e):
+#                 print(f"Erreur dans l'IA: {e}")
+#     finally:
+#         ia_running = False
+        
+def run_ia():
+    global grille_jeu, pieces, ia_state, grille_backup, pieces_backup
+    
+    ia_state["running"] = True
+    ia_state["stop_requested"] = False
+    
+    try:
+        # Sauvegarde l'état actuel avant de démarrer
+        grille_backup = {k:v for k,v in grille_jeu.items()}
+        pieces_backup = [p for p in pieces]
+        
+        noeud_initial = Noeud(grille_backup, pieces_backup)
+        solution = explorer_profondeur(noeud_initial, grille_jeu, pieces, screen)
+        
+        if solution and not ia_state["stop_requested"]:
+            # Applique la solution complète
+            grille_jeu.clear()
+            for (lig, col), piece in solution.grille.items():
+                piece.ligne, piece.colonne = lig, col
+                piece.rect.x = x_debut + col * taille_piece
+                piece.rect.y = y_debut + lig * taille_piece
+                grille_jeu[(lig, col)] = piece
+            
+    except Exception as e:
+        print(f"Erreur dans l'IA: {e}")
+    finally:
+        ia_state["running"] = False
+        # Force le rafraîchissement de l'affichage
+        pygame.event.post(pygame.event.Event(pygame.USEREVENT))
 
+def handle_events():
+    global running, scene, selected_tile, grille_jeu, son_jouable, regles, screen, ia_running, couleur_fond_ecran, ia_thread, ia_state, pieces
+    from methArbo import grille_en_cours, pieces_restantes
+    
     # Gestion des événements
     for event in pygame.event.get():
 
         if event.type == pygame.QUIT:  # Quitter
-            ia_stop_event.set()
+            # ia_stop_event.set()
+            ia_state["stop_requested"] = True
+            ia_state["thread"].join()  # Attend la fin du thread
+            ia_state["thread"] = None
             running = False
                       
 
         # Sélectionner une pièce avec la souris
         if event.type == pygame.MOUSEBUTTONDOWN:
+            
+            # if bouton_ia.collidepoint(event.pos):
+            #     if not ia_running:
+            #         print("début ia")
+            #         ia_running = True
+            #         ia_thread = threading.Thread(target=run_ia)
+            #         ia_thread.start()
+            #     else:
+            #         ia_stop_event.set()
+            #         print("fin ia")                  
+            #         ia_running = False
+            
+            if bouton_ia.collidepoint(event.pos):
+                if not ia_state["running"]:
+                    print("Démarrage IA")
+                    ia_state["thread"] = threading.Thread(target=run_ia)
+                    ia_state["thread"].start()
+                else:
+                    print("Arrêt IA demandé")
+                    ia_state["stop_requested"] = True
+                    ia_state["thread"].join()
+                    
+                    grille_jeu.clear()
+                    
+                    with lock:
+                        grille_jeu = grille_en_cours
 
-            if bouton_quitter.collidepoint(event.pos) or bouton_retour.collidepoint(event.pos):
-                ia_stop_event.set()
-                running = False  # Ou redirigez vers le menu
+                    for piece in pieces:
+                        piece.rect.x = random.randint(650, largeur_screen - (taille_piece + 50 + (largeur_screen - x_debut_regles)))
+                        piece.rect.y = random.randint(185, longueur_screen - (taille_piece + 50))
+                        piece.colonne = None
+                        piece.ligne = None
+
+                    # Met à jour les pièces dans la grille (visuellement)
+                    for (lig, col), piece in grille_jeu.items():
+                        piece.rect.x = x_debut + col * taille_piece
+                        piece.rect.y = y_debut + lig * taille_piece
+                        piece.ligne = lig
+                        piece.colonne = col
+                        
+                    pieces = list(grille_jeu.values()) + pieces_restantes
+                        
+                    # Rafraîchit l'affichage
+                    screen.fill(couleur_fond_ecran)
+                    draw_ecran()
+                    for piece in pieces:
+                        piece.draw(screen)
+                    # for piece in pieces_a_placer:
+                    # piece.draw(screen)
+                    pygame.display.flip()
+                
+
+                # Gestion de l'événement de rafraîchissement
+            if event.type == pygame.USEREVENT:
+                screen.fill(couleur_fond_ecran)
+                draw_ecran()
+                for piece in pieces:
+                    piece.draw(screen)
+                pygame.display.flip()
+            
+            # if bouton_retour.collidepoint(event.pos): #bouton retour au menu
+            #     ia_stop_event.set()
+            #     if ia_thread is not None:
+            #         if ia_thread.is_alive():
+            #             ia_thread._stop()
+            #             ia_thread.join()
+            #     ia_running = False
+            #     grille_jeu = {}
+            #     selected_tile = None
+            #     scene = 1
 
             if bouton_retour.collidepoint(event.pos): #bouton retour au menu
-                ia_stop_event.set()
-                grille_jeu = {}
+                if ia_state["running"]:
+                    ia_state["stop_requested"] = True
+                    if ia_state["thread"] is not None:
+                        ia_state["thread"].join()
+                ia_state["running"] = False
+                grille_jeu = {} if ia_state["saved_grid"] is None else ia_state["saved_grid"]
                 selected_tile = None
                 scene = 1
-
-            if bouton_ia.collidepoint(event.pos):
-                if not ia_running:
-                    print("début ia")
-                    ia_running = True
-                    threading.Thread(target=run_ia, daemon=True).start()
-                else:
-                    ia_stop_event.set()
-                    print("fin ia")                  
-                    ia_running = False
-
 
             if bouton_son.collidepoint(event.pos):
                 if son_jouable == True:
@@ -366,6 +479,7 @@ def handle_events():
                     regles = False 
                 else:
                     regles = True
+                
                     
 
             if event.button == 1 and not ia_running :  # Clic gauche pour déplacer
@@ -373,16 +487,16 @@ def handle_events():
                     if piece.rect.collidepoint(event.pos):
                         selected_tile = piece
 
-                        if (piece.colonne, piece.ligne) in grille_jeu:  # Si elle était placée
-                            grille_jeu.pop((piece.colonne, piece.ligne), None)
-                            piece.colonne, piece.ligne = None, None  # La rendre libre
+                        if (piece.ligne, piece.colonne) in grille_jeu:  # Si elle était placée
+                            grille_jeu.pop((piece.ligne, piece.colonne), None)
+                            piece.ligne, piece.colonne = None, None  # La rendre libre
 
 
 
             elif event.button == 3 and not ia_running :  # Clic droit pour pivoter
                 for piece in pieces:
                     if piece.rect.collidepoint(event.pos):
-                        if (piece.colonne, piece.ligne) in grille_jeu: #vérifie si la pièce est déja dans la grille
+                        if (piece.ligne, piece.colonne) in grille_jeu: #vérifie si la pièce est déja dans la grille
                             continue  # Ignore la tentative de rotation
                         piece.rotate()
 
@@ -398,13 +512,13 @@ def handle_events():
             if 0 <= selected_tile.colonne < choix_grille and 0 <= selected_tile.ligne < choix_grille:
 
                 # Vérifier si une pièce est déjà présente
-                if grille_jeu.get((selected_tile.colonne, selected_tile.ligne)) is None:
+                if grille_jeu.get((selected_tile.ligne, selected_tile.colonne)) is None:
                     posable = True
 
                     # Vérifie si la pièce au dessus a la même couleur
                     if selected_tile.ligne != 0 and posable:
-                        if grille_jeu.get((selected_tile.colonne, selected_tile.ligne - 1)) is not None:
-                            if grille_jeu.get((selected_tile.colonne, selected_tile.ligne - 1)).cotes[2] == selected_tile.cotes[0]:
+                        if grille_jeu.get((selected_tile.ligne -1, selected_tile.colonne)) is not None:
+                            if grille_jeu.get((selected_tile.ligne -1, selected_tile.colonne)).cotes[2] == selected_tile.cotes[0]:
                                 posable = True
                             else:
                                 posable = False
@@ -418,8 +532,8 @@ def handle_events():
 
                     # Vérifie si la pièce à gauche a la même couleur
                     if selected_tile.colonne != 0 and posable:
-                        if grille_jeu.get((selected_tile.colonne - 1, selected_tile.ligne)) is not None:
-                            if grille_jeu.get((selected_tile.colonne - 1, selected_tile.ligne)).cotes[1] == selected_tile.cotes[3]:
+                        if grille_jeu.get((selected_tile.ligne, selected_tile.colonne -1)) is not None:
+                            if grille_jeu.get((selected_tile.ligne, selected_tile.colonne -1)).cotes[1] == selected_tile.cotes[3]:
                                 posable = True
                             else:
                                 posable = False
@@ -433,8 +547,8 @@ def handle_events():
 
                     # Vérifie si la pièce en dessous a la même couleur
                     if selected_tile.ligne != choix_grille - 1 and posable:
-                        if grille_jeu.get((selected_tile.colonne, selected_tile.ligne + 1)) is not None:
-                            if grille_jeu.get((selected_tile.colonne, selected_tile.ligne + 1)).cotes[0] == selected_tile.cotes[2]:
+                        if grille_jeu.get((selected_tile.ligne +1, selected_tile.colonne)) is not None:
+                            if grille_jeu.get((selected_tile.ligne + 1, selected_tile.colonne)).cotes[0] == selected_tile.cotes[2]:
                                 posable = True
                             else:
                                 posable = False
@@ -448,8 +562,8 @@ def handle_events():
 
                         # Vérifie si la pièce à droite a la même couleur
                     if selected_tile.colonne != choix_grille - 1 and posable:
-                        if grille_jeu.get((selected_tile.colonne + 1, selected_tile.ligne)) is not None:
-                            if grille_jeu.get((selected_tile.colonne + 1, selected_tile.ligne)).cotes[3] == selected_tile.cotes[1]:
+                        if grille_jeu.get((selected_tile.ligne, selected_tile.colonne +1)) is not None:
+                            if grille_jeu.get((selected_tile.ligne, selected_tile.colonne +1)).cotes[3] == selected_tile.cotes[1]:
                                 posable = True
                             else:
                                 posable = False
@@ -465,9 +579,10 @@ def handle_events():
                     if posable:
                         selected_tile.rect.x = x_debut + selected_tile.colonne * taille_piece
                         selected_tile.rect.y = y_debut + selected_tile.ligne * taille_piece
-                        grille_jeu[(selected_tile.colonne, selected_tile.ligne)] = selected_tile  # Ajouter au dictionnaire
+                        grille_jeu[(selected_tile.ligne, selected_tile.colonne)] = selected_tile  # Ajouter au dictionnaire
                             #SON
                         sons("son_check",son_jouable)
+                        print( "pièces : ", pieces , "nombre de pièces" , len(pieces))
 
                         # Sinon, replacer la pièce aléatoirement dans le tas
                     else:
@@ -558,7 +673,7 @@ def handle_events():
     
                 pygame.display.flip()
                 sons("son_victoire",son_jouable)
-                pygame.time.delay(100)  # Pause pour que le joueur voie le message
+                pygame.time.delay(5000)  # Pause pour que le joueur voie le message
                 running = False  # Terminer le jeu
     
     

@@ -14,8 +14,8 @@ class Piece:
         self.rotation = 0  # Rotation actuelle (0, 90, 180, 270)
         self.rect = pygame.Rect(x, y, taille_piece, taille_piece)
         self.taille_piece = taille_piece
-        self.colonne = round((self.rect.x - x_debut) / taille_piece)
         self.ligne   = round((self.rect.y - y_debut) / taille_piece)    # Position ligne sur la grille (0 à choix_grille - 1)
+        self.colonne = round((self.rect.x - x_debut) / taille_piece)
         self.rotation_index = 0  # Index de la rotation actuelle
         self.x_debut = x_debut
         self.y_debut=y_debut
