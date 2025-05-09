@@ -2,6 +2,7 @@ import pygame
 from piece import Piece
 import random
 
+
 class Noeud:
     def __init__(self, grille, pieces):
         self.grille = {}
@@ -38,8 +39,10 @@ class Noeud:
         )
         
     def est_solution(self):
+        from game import choix_grille
+        if len(self.grille) == choix_grille**2 :
         # Vérifie si ce noeud représente une solution complète
-        return not self.pieces
+            return True
     
     def generer_enfants(self):
         from game import ia_stop_event
